@@ -69,6 +69,17 @@ void jtagInit(struct ff_jtag *jtag) {
   gpioWrite(jtag->pins.sel, 1);  // select the Spartan7 UART
 }
 
+// pin mappings:  tck  tms  tdi
+#define  MASK_TCK  0x4
+#define  MASK_TMS  0x2
+#define  MASK_TDI  0x1
+
+void jtagPause(struct ff_jtag *jtag) {
+	(void)jtag;
+//	usleep(1);
+	return;
+}
+
 int main(int argc, char **argv) {
   (void) argc;
   (void) argv;
@@ -91,20 +102,56 @@ int main(int argc, char **argv) {
   sfd = open("/dev/ttyS0", O_RDWR);
 
   if( sfd == -1 ) {
-    printf("Fatal error opening serial port\n");
+    fprintf( stderr, "Fatal error opening serial port\n");
     return 1;
   }
 
   jtagInit(jtag);
   
-  unsigned char c;
+  unsigned char c, bits, ret;
   ssize_t count;
   while(1) {
     count = read(sfd, &c, 1);
       
     if( count != 1 ) {
-      printf( "unexpected count return, continuing\n" );
+      fprintf( stderr, "unexpected count return, continuing\n" );
     }
+
+    // characters starting at offset '@' are direct set of pin state (including clock pin)
+    // a read data is done immediately upon conclusion of setting pin state: we count on the FPGA being fast
     
+    // characters starting at offset '`' are clocked set of pin state (clock pin spec is ignored)
+    // this is: set data, rising edge, falling edge, read data
+    
+    // every charater sent returns a character which is the line state at the conclusion of the command
+    bits = 0xf & c;
+    if ((c & 0xf0) == 0x40) {  // 0x40 = '@'
+      bits & MASK_TMS ? gpioWrite(jtag->pins.tms, 1) : gpioWrite(jtag->pins.tms, 0);
+      bits & MASK_TDI ? gpioWrite(jtag->pins.tdi, 1) : gpioWrite(jtag->pins.tdi, 0);
+      bits & MASK_TCK ? gpioWrite(jtag->pins.tck, 1) : gpioWrite(jtag->pins.tck, 0);
+
+      gpioRead(jtag->pins.tck);
+      jtagPause(jtag);
+
+      ret = gpioRead(jtag->pins.tdo) ? '1' : '0';
+    } else if(( c & 0xf0) == 0x60) { // 0x60 = '`'
+      bits & MASK_TMS ? gpioWrite(jtag->pins.tms, 1) : gpioWrite(jtag->pins.tms, 0);
+      bits & MASK_TDI ? gpioWrite(jtag->pins.tdi, 1) : gpioWrite(jtag->pins.tdi, 0);
+
+      gpioWrite(jtag->pins.tck, 1);
+      gpioRead(jtag->pins.tck);
+      jtagPause(jtag);
+      
+      gpioWrite(jtag->pins.tck, 0);
+      gpioRead(jtag->pins.tck);
+      jtagPause(jtag);
+      
+      ret = gpioRead(jtag->pins.tdo) ? '1' : '0';
+    }
+
+    // return the state of the TDO pin
+    if( write(sfd, &ret, 1) != 1 ) {
+      fprintf(stderr, "return write failed\n");
+    }
   }
 }

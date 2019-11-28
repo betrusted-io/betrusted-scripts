@@ -2,7 +2,7 @@ PACKAGE    = jtag-loop
 ADD_CFLAGS = 
 ADD_LFLAGS = 
 
-GIT_VERSION= $(shell git describe --tags)
+#GIT_VERSION= $(shell git describe --tags)
 #TRGT      ?= arm-none-eabi-
 CC         = $(TRGT)gcc
 CXX        = $(TRGT)g++
@@ -22,7 +22,7 @@ DBG_CFLAGS = -ggdb -g -DDEBUG -Wall
 DBG_LFLAGS = -ggdb -g -Wall
 CFLAGS     = $(ADD_CFLAGS) \
              -Wall -Wextra -O2 \
-             -DGIT_VERSION=u\"$(GIT_VERSION)\"
+#             -DGIT_VERSION=u\"$(GIT_VERSION)\"
 CXXFLAGS   = $(CFLAGS)
 LFLAGS     = $(ADD_LFLAGS) $(CFLAGS) \
 
