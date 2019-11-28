@@ -128,6 +128,10 @@ int main(int argc, char **argv) {
     if ((c & 0xf0) == 0x40) {  // 0x40 = '@'
       bits & MASK_TMS ? gpioWrite(jtag->pins.tms, 1) : gpioWrite(jtag->pins.tms, 0);
       bits & MASK_TDI ? gpioWrite(jtag->pins.tdi, 1) : gpioWrite(jtag->pins.tdi, 0);
+
+      gpioRead(jtag->pins.tck);
+      jtagPause(jtag);
+      
       bits & MASK_TCK ? gpioWrite(jtag->pins.tck, 1) : gpioWrite(jtag->pins.tck, 0);
 
       gpioRead(jtag->pins.tck);
@@ -138,14 +142,20 @@ int main(int argc, char **argv) {
       bits & MASK_TMS ? gpioWrite(jtag->pins.tms, 1) : gpioWrite(jtag->pins.tms, 0);
       bits & MASK_TDI ? gpioWrite(jtag->pins.tdi, 1) : gpioWrite(jtag->pins.tdi, 0);
 
+      // 3.00ns/2.00ns set/hold on TDI/TMS to jtag rising edge
+      gpioRead(jtag->pins.tck);
+      jtagPause(jtag);
+
       gpioWrite(jtag->pins.tck, 1);
+      // 7.5ns min high pulse width NOM
       gpioRead(jtag->pins.tck);
       jtagPause(jtag);
       
       gpioWrite(jtag->pins.tck, 0);
+      // 7.00ns TCK falling edge to tdo valid
       gpioRead(jtag->pins.tck);
       jtagPause(jtag);
-      
+
       ret = gpioRead(jtag->pins.tdo) ? '1' : '0';
     }
 
