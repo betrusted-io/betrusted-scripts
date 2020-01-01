@@ -184,14 +184,19 @@ int main(int argc, char **argv) {
     count = read(sfd, &c, 1);
       
     if( count != 1 ) {
+      if( count > 1 ) {
+	printf("***OVERRUN***\n");
+      }
       continue;
     }
     if( c == 0 ) {
       // ignore null reads
       continue;
     }
-    //putchar(c);
-    //fflush(stdout);
+    //if(DEBUG_JTAG) {
+    //  putchar(c);
+    //  fflush(stdout);
+    //}
 
     // characters starting at offset '@' are direct set of pin state (including clock pin)
     // a read data is done immediately upon conclusion of setting pin state: we count on the FPGA being fast
@@ -253,7 +258,7 @@ int main(int argc, char **argv) {
       }
     } else {
       if (DEBUG_JTAG) {
-	printf("%02x ", c);
+	printf(".%02x", c);
 	fflush(stdout);
       }
     }
