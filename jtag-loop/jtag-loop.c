@@ -84,6 +84,75 @@ void jtagPause(struct ff_jtag *jtag) {
 	return;
 }
 
+
+// Opens the specified serial port, sets it up for binary communication,
+// configures its read timeouts, and sets its baud rate.
+// Returns a non-negative file descriptor on success, or -1 on failure.
+int open_serial_port(const char * device, uint32_t baud_rate)
+{
+  int fd = open(device, O_RDWR | O_NOCTTY);
+  if (fd == -1)
+    {
+      perror(device);
+      return -1;
+    }
+
+  // Flush away any bytes previously read or written.
+  int result = tcflush(fd, TCIOFLUSH);
+  if (result)
+    {
+      perror("tcflush failed");  // just a warning, not a fatal error
+    }
+
+  // Get the current configuration of the serial port.
+  struct termios options;
+  result = tcgetattr(fd, &options);
+  if (result)
+    {
+      perror("tcgetattr failed");
+      close(fd);
+      return -1;
+    }
+
+  // Turn off any options that might interfere with our ability to send and
+  // receive raw binary bytes.
+  options.c_iflag &= ~(INLCR | IGNCR | ICRNL | IXON | IXOFF);
+  options.c_oflag &= ~(ONLCR | OCRNL);
+  options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+
+  // Set up timeouts: Calls to read() will return as soon as there is
+  // at least one byte available or when 100 ms has passed.
+  options.c_cc[VTIME] = 1;
+  options.c_cc[VMIN] = 0;
+
+  // This code only supports certain standard baud rates. Supporting
+  // non-standard baud rates should be possible but takes more work.
+  switch (baud_rate)
+    {
+    case 4800:   cfsetospeed(&options, B4800);   break;
+    case 9600:   cfsetospeed(&options, B9600);   break;
+    case 19200:  cfsetospeed(&options, B19200);  break;
+    case 38400:  cfsetospeed(&options, B38400);  break;
+    case 115200: cfsetospeed(&options, B115200); break;
+    default:
+      fprintf(stderr, "warning: baud rate %u is not supported, using 9600.\n",
+	      baud_rate);
+      cfsetospeed(&options, B9600);
+      break;
+    }
+  cfsetispeed(&options, cfgetospeed(&options));
+
+  result = tcsetattr(fd, TCSANOW, &options);
+  if (result)
+    {
+      perror("tcsetattr failed");
+      close(fd);
+      return -1;
+    }
+
+  return fd;
+}
+
 int main(int argc, char **argv) {
   (void) argc;
   (void) argv;
@@ -102,49 +171,8 @@ int main(int argc, char **argv) {
   jtagSetPin(jtag, JT_TMS, J_TMS);
   jtagSetPin(jtag, JT_RESET, J_RESET);
   jtagSetPin(jtag, JT_SEL, J_SEL);
-  
-  sfd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
 
-  if( sfd == -1 ) {
-    fprintf( stderr, "Fatal error opening serial port\n");
-    return 1;
-  }
-
-  /*---------- Setting the Attributes of the serial port using termios structure --------- */
-
-  struct termios SerialPortSettings;/* Create the structure                          */
-
-  tcgetattr(sfd, &SerialPortSettings);/* Get the current attributes of the Serial port */
-
-  /* Setting the Baud rate */
-  cfsetispeed(&SerialPortSettings,B115200); /* Set Read  Speed as 115200                       */
-  cfsetospeed(&SerialPortSettings,B115200); /* Set Write Speed as 115200                       */
-
-  /* 8N1 Mode */
-  SerialPortSettings.c_cflag &= ~PARENB;   /* Disables the Parity Enable bit(PARENB),So No Parity   */
-  SerialPortSettings.c_cflag &= ~CSTOPB;   /* CSTOPB = 2 Stop bits,here it is cleared so 1 Stop bit */
-  SerialPortSettings.c_cflag &= ~CSIZE; /* Clears the mask for setting the data size             */
-  SerialPortSettings.c_cflag |=  CS8;      /* Set the data bits = 8                                 */
-
-  SerialPortSettings.c_cflag &= ~CRTSCTS;       /* No Hardware flow Control                         */
-  SerialPortSettings.c_cflag |= CREAD | CLOCAL; /* Enable receiver,Ignore Modem Control lines       */
-
-
-  SerialPortSettings.c_iflag &= ~(IXON | IXOFF | IXANY);          /* Disable XON/XOFF flow control both i/p and o/p */
-  SerialPortSettings.c_iflag &= ~(ICANON | ECHO | ECHOE | ISIG);  /* Non Cannonical mode                            */
-
-  SerialPortSettings.c_oflag &= ~OPOST;/*No Output Processing*/
-
-  /* Setting Time outs */
-  SerialPortSettings.c_cc[VMIN] = 1; /* Read at least 1 characters */
-  SerialPortSettings.c_cc[VTIME] = 0; /* Wait indefinetly   */
-
-
-  if((tcsetattr(sfd,TCSANOW,&SerialPortSettings)) != 0) /* Set the attributes to the termios structure*/
-    fprintf(stderr, "\n  ERROR ! in Setting attributes");
-  /*  else
-      printf("\n  BaudRate = 115200 \n  StopBits = 1 \n  Parity   = none");*/
-
+  sfd = open_serial_port("/dev/ttyS0", 115200);
 
   jtagInit(jtag);
   
@@ -156,7 +184,7 @@ int main(int argc, char **argv) {
     count = read(sfd, &c, 1);
       
     if( count != 1 ) {
-      fprintf( stderr, "unexpected count return, continuing\n" );
+      continue;
     }
     if( c == 0 ) {
       // ignore null reads
