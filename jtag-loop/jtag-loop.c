@@ -18,6 +18,7 @@
 #define J_SEL  18
 
 #define DEBUG_JTAG 0
+#define DEBUG_TDO  1
 
 enum jtag_pin {
   JT_TCK,
@@ -229,6 +230,12 @@ int main(int argc, char **argv) {
       }
     }
 
+
+    if (DEBUG_TDO) {
+      putchar(ret);
+      fflush(stdout);
+    }
+    
     // return the state of the TDO pin
     if( write(sfd, &ret, 1) != 1 ) {
       fprintf(stderr, "return write failed\n");
