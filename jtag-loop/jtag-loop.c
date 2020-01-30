@@ -158,7 +158,18 @@ int main(int argc, char **argv) {
   (void) argv;
   struct ff_jtag *jtag;
   int sfd;
+  int ofd = -1;
 
+  if( argc == 2 ) {
+    ofd = open(argv[1], O_WRONLY | O_CREAT);
+    if (ofd < 0) {
+      printf( "open of %s failed, aborting\n", argv[1] );
+      return 1;
+    } else {
+      printf( "using %s to log output on detected preamble\n", argv[1] );
+    }
+  }
+  
   if (gpioInitialise() < 0) {
     fprintf(stderr, "Unable to initialize GPIO\n");
     return 1;
@@ -178,11 +189,16 @@ int main(int argc, char **argv) {
   
   unsigned char c, bits, ret;
   ssize_t count;
+
+  int randtrig = 0;
+  int randoff = 0;
+  int randmode = 0;
+  int randcount = 0;
   
   tcflush(sfd, TCIFLUSH);   /* Discards old data in the rx buffer            */
   while(1) {
     count = read(sfd, &c, 1);
-      
+
     if( count != 1 ) {
       if( count > 1 ) {
 	printf("***OVERRUN***\n");
@@ -193,6 +209,44 @@ int main(int argc, char **argv) {
       // ignore null reads
       continue;
     }
+
+    if( ofd > 0 ) {
+      // this is a one-way door for now
+      if( c == 'N' && randtrig == 0 ) {
+	randtrig++;
+      } else if( c == 'O' && randtrig == 1 ) {
+	randmode = 1;
+	randtrig ++;
+	printf("Starting logging...");
+	continue;
+      } else {
+	randtrig = 0;
+      }
+
+      if( randmode ) {
+	write(ofd, &c, 1);
+	randcount++;
+	if( (randcount % 10000) == 0 ) {
+	  printf(".");
+	  fflush(stdout);
+	  fsync(ofd);
+	}
+	continue;
+      }
+      /*
+      if( c == 'O' && randtrig == 0 ) {
+	randoff++;
+      } else if( c == 'N' && randtrig == 1 ) {
+	randmode = 0;
+	randoff ++;
+	printf("Stopping logging...");
+	fsync(ofd);
+      } else {
+	randoff = 0;
+	}*/
+      
+    }
+    
     //if(DEBUG_JTAG) {
     //  putchar(c);
     //  fflush(stdout);
