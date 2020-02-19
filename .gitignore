@@ -3,3 +3,5 @@ flterm/flterm
 flterm/byteswap
 *.bin
 *.bit
+ec-csr.csv
+soc-csr.csv
