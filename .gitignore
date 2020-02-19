@@ -5,3 +5,4 @@ flterm/byteswap
 *.bit
 ec-csr.csv
 soc-csr.csv
+*.works
