@@ -1,0 +1,3 @@
+[submodule "wfx-firmware"]
+	path = wfx-firmware
+	url = https://github.com/SiliconLabs/wfx-firmware.git
