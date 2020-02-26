@@ -26,7 +26,7 @@ do
 done
 
 md5sum encrypted.bin
-md5sum xous.img
+md5sum betrusted-soc.bin
 
 sudo ./reset-soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
