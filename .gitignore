@@ -6,3 +6,4 @@ flterm/byteswap
 ec-csr.csv
 soc-csr.csv
 *.works
+*.img
