@@ -25,17 +25,17 @@ do
     esac
 done
 
-md5sum encrypted.bin
-md5sum betrusted-soc.bin
+md5sum ../bin/encrypted.bin
+md5sum ../bin/betrusted-soc.bin
 
 sudo ./reset-soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
 then
-    sudo openocd -c 'set BITSTREAM_FILE encrypted.bin' -f spi-bitstream.cfg
+    sudo openocd -c 'set BITSTREAM_FILE ../bin/encrypted.bin' -f spi-bitstream.cfg
 fi
 
 if [ $UPDATE_KERNEL -eq 1 ]
 then
-    sudo openocd -c 'set FIRMWARE_FILE betrusted-soc.bin' -f spi-fw.cfg
+    sudo openocd -c 'set FIRMWARE_FILE ../bin/betrusted-soc.bin' -f spi-fw.cfg
 fi
 sudo ./reset-soc.sh
