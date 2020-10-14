@@ -1,3 +1,6 @@
 [submodule "wfx-firmware"]
 	path = wfx-firmware
 	url = https://github.com/SiliconLabs/wfx-firmware.git
+[submodule "jtag-trace"]
+	path = jtag-gpio
+	url = https://github.com/betrusted-io/jtag-trace.git
