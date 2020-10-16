@@ -19,6 +19,7 @@ These scripts assume the following file structure:
         ------ bin
 	|
 	------ fomu-flash
+```
 
 This repo uses submodules, so be sure to either clone using `--recursive` or call a
 `git submodule init && git submodule update` after cloning.
