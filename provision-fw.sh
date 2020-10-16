@@ -28,14 +28,18 @@ done
 md5sum ../bin/encrypted.bin
 md5sum ../bin/betrusted-soc.bin
 
-sudo ./reset-soc.sh
+# sudo ./reset-soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
 then
-    sudo openocd -c 'set BITSTREAM_FILE ../bin/encrypted.bin' -f spi-bitstream.cfg
+    cd jtag-tools && ./jtag_gpio.py -f ../../bin/encrypted.bin --bitstream --spi-mode -r
+    cd ..
+    # sudo openocd -c 'set BITSTREAM_FILE ../bin/encrypted.bin' -f spi-bitstream.cfg
 fi
 
 if [ $UPDATE_KERNEL -eq 1 ]
 then
-    sudo openocd -c 'set FIRMWARE_FILE ../bin/betrusted-soc.bin' -f spi-fw.cfg
+    cd jtag-tools && ./jtag_gpio.py -f ../../bin/betrusted-soc.bin --raw-binary -a 0x500000 -s -r
+    cd ..
+    # sudo openocd -c 'set FIRMWARE_FILE ../bin/betrusted-soc.bin' -f spi-fw.cfg
 fi
 sudo ./reset-soc.sh

@@ -31,11 +31,15 @@ md5sum ../bin/xous.img
 sudo ./reset-soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
 then
-    sudo openocd -c 'set BITSTREAM_FILE ../bin/encrypted.bin' -f spi-bitstream.cfg
+    cd jtag-tools && ./jtag_gpio.py -f ../../bin/encrypted.bin --bitstream --spi-mode -r
+    cd ..
+    # sudo openocd -c 'set BITSTREAM_FILE ../bin/encrypted.bin' -f spi-bitstream.cfg
 fi
 
 if [ $UPDATE_KERNEL -eq 1 ]
 then
-    sudo openocd -c 'set FIRMWARE_FILE ../bin/xous.img' -f spi-fw.cfg
+    cd jtag-tools && ./jtag_gpio.py -f ../../bin/xous.img --raw-binary -a 0x500000 -s -r
+    cd ..
+    # sudo openocd -c 'set FIRMWARE_FILE ../bin/xous.img' -f spi-fw.cfg
 fi
 sudo ./reset-soc.sh
