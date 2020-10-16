@@ -33,10 +33,12 @@ If you want GDB debugging capability, you may also want to install [wishbone-too
 
 ## Usage
 
-There are corresponding `buildpush.sh` scripts in the firmware generation directories
-for Xous and the validation firmware image (betrusted-soc/fw) that will build firmware images
-and copy them to the `code/bin` directory on the Raspberry Pi automatically, once you
-specify the IP address of the Pi and a ssh private key file (if used).
+There are corresponding `buildpush.sh` scripts in the firmware
+generation directories for Xous (xous-core), the validation firmware
+image (betrusted-soc/fw), and the EC image (betrusted-ec/sw) that will
+build firmware images and copy them to the `code/bin` directory on the
+Raspberry Pi automatically, once you specify the IP address of the Pi
+and a ssh private key file (if used).
 
 Here is a description of the relevant commands, in the order that you would execute them to bring up a board "from factory blank state" (that is, with brand new, blank FLASH memories everywhere):
 
@@ -57,7 +59,18 @@ own OS to Precursor.
 
 Note that an "encrypted" image is used for the FPGA by default; however,
 for FPGAs that have not been sealed by the end user, the encrypted image
-is encrypted by default to the "dummy key", e.g. an AES key of all 0's. 
+is encrypted by default to the "dummy key", e.g. an AES key of all 0's.
+
+## Other scripts
+
+Some other scripts included here:
+
+- `vbus.sh` -- takes an argument `0` or `1` to turn off or on the power to Precursor. Do not turn on power to Precursor if you have it already plugged into a charger. This script is mostly useful for low-level debug of stand-alone boards.
+- `uart_fpga.sh` -- mux the SoC UART to the Rpi `/dev/ttyS0`
+- `uart_up5k.sh` -- mux the EC UART to the Rpi `/dev/ttyS0`
+- `reset-soc.sh` -- pulls the PROG_N line on the SoC, forcing it to reload. Also resets the SPI ROM out of OPI mode.
+- `reset-ec.sh` -- pulls the CRESET_B line on the EC, forcing it to reload.
+- `start-gdb*.sh` -- will start `wishbone-tools` wish some defaults that enable variations of GDB connectivity, either via USB, TTY, or otherwise. Assumes `crossover` UART unless `-noterm` is used. Requires a .csv file that describes the FPGA in question, which should be provisioned automatically if you use the `buildpush.sh` script in the correpsonding FPGA's repo.
 
 ## Contribution Guidelines
 
