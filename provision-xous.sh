@@ -2,12 +2,17 @@
 
 UPDATE_FPGA=1
 UPDATE_KERNEL=1
+UPDATE_LOADER=1
 
 for arg in "$@"
 do
     case $arg in
 	-k|--kernel-skip)
 	    UPDATE_KERNEL=0
+	    shift
+	    ;;
+	-l|--loader-skip)
+	    UPDATE_LOADER=0
 	    shift
 	    ;;
 	-f|--fpga-skip)
@@ -33,13 +38,17 @@ if [ $UPDATE_FPGA -eq 1 ]
 then
     cd jtag-tools && ./jtag_gpio.py -f ../../precursors/encrypted.bin --bitstream --spi-mode -r
     cd ..
-    # sudo openocd -c 'set BITSTREAM_FILE ../precursors/encrypted.bin' -f spi-bitstream.cfg
+fi
+
+if [ $UPDATE_LOADER -eq 1 ]
+then
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/loader.bin --raw-binary -a 0x500000 -s -r
+    cd ..
 fi
 
 if [ $UPDATE_KERNEL -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/xous.img --raw-binary -a 0x500000 -s -r
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/xous.img --raw-binary -a 0x980000 -s -r
     cd ..
-    # sudo openocd -c 'set FIRMWARE_FILE ../precursors/xous.img' -f spi-fw.cfg
 fi
 sudo ./reset-soc.sh
