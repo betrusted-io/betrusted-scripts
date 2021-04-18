@@ -16,7 +16,7 @@ These scripts assume the following file structure:
         |
         ------ betrusted-scripts
         |
-        ------ bin
+        ------ precursors
 	|
 	------ fomu-flash
 ```
@@ -37,16 +37,16 @@ If you want GDB debugging capability, you may also want to install [wishbone-too
 There are corresponding `buildpush.sh` scripts in the firmware
 generation directories for Xous (xous-core), the validation firmware
 image (betrusted-soc/fw), and the EC image (betrusted-ec/sw) that will
-build firmware images and copy them to the `code/bin` directory on the
+build firmware images and copy them to the `code/precursors` directory on the
 Raspberry Pi automatically, once you specify the IP address of the Pi
 and a ssh private key file (if used).
 
 Here is a description of the relevant commands, in the order that you would execute them to bring up a board "from factory blank state" (that is, with brand new, blank FLASH memories everywhere):
 
 - `wfx-firmware.sh` will write the firmware blob for the SiLabs WF200 to the EC's SPI memory space. Note that the WF200 is an untrusted entity, and the system trusts the WF200 precisely as much as it would trust any cable modem or core router.
-- `config_up5k.sh` will set the QE bit of the EC SPI memory and provision an image located in `bin/bt-ec.bin` onto the EC SPI. This effectively provisions the EC.
-- `provision_fw.sh` will burn both an FPGA image `bin/encrypted.bin` and a firmware file `bin/betrusted-soc.bin` to the correct locations in SoC FLASH space. This is used for the low-level validation (if you plan to use Xous, use `provision_xous.sh`, this is unecessary).
-- `provision_xous.sh` will burn both an FPGA image `bin/encrypted.bin` and a firmware file `bin/xous.img` to the correct locations in SoC FLASH space. This used for Xous.
+- `config_up5k.sh` will set the QE bit of the EC SPI memory and provision an image located in `precursors/bt-ec.bin` onto the EC SPI. This effectively provisions the EC.
+- `provision_fw.sh` will burn both an FPGA image `precursors/encrypted.bin` and a firmware file `precursors/betrusted-soc.bin` to the correct locations in SoC FLASH space. This is used for the low-level validation (if you plan to use Xous, use `provision_xous.sh`, this is unecessary).
+- `provision_xous.sh` will burn both an FPGA image `precursors/encrypted.bin` and a firmware file `precursors/xous.img` to the correct locations in SoC FLASH space. This used for Xous.
 
 The validation image boots directly from SPI, but Xous boots from
 internal ROM, which is why the provisioning scripts are different. The
