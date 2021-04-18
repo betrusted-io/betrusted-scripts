@@ -27,7 +27,7 @@ This repo uses submodules, so be sure to either clone using `--recursive` or cal
 Note that the `jtag-tools` has dependencies, please consult its README file on how to
 setup and install.
 
-Furthermore note that you will need [fomu-flash](https://github.com/im-tomu/fomu-flash) installed
+Furthermore note that you will need [fomu-flash](https://github.com/betrusted-io/fomu-flash) installed
 and built for the Pi. Please refer to its repo for compilation and installation instructions.
 
 If you want GDB debugging capability, you may also want to install [wishbone-tool](https://wishbone-utils.readthedocs.io/en/latest/wishbone-tool/) and plug Precursor's USB port into the Raspberry Pi's USB port.
