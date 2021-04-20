@@ -30,13 +30,14 @@ do
     esac
 done
 
-md5sum ../precursors/encrypted.bin
+md5sum ../precursors/soc_csr.bin
+md5sum ../precursors/loader.bin
 md5sum ../precursors/xous.img
 
 sudo ./reset-soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/encrypted.bin --bitstream --spi-mode -r
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --bitstream --spi-mode -r
     cd ..
 fi
 
