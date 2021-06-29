@@ -40,14 +40,22 @@ your device from a pre-build, you would receive an archive of the
 binaries and extract them into the `precursors` directory. 
 
 If you are trying to build everything from scratch, there are corresponding
-scripts in the firmware generation directories for Xous ([xous-core](https://github.com/betrusted-io/xous-core/blob/main/buildpush.sh)), the validation firmware
-image ([betrusted-soc/fw](https://github.com/betrusted-io/betrusted-soc/blob/main/fw/buildpush.sh)), and the EC image (betrusted-ec - run `cargo xtask push [ip address] [ssh ID file]` in the root of the repo) that will build firmware images and copy them to the `code/precursors` directory on the
-Raspberry Pi automatically, once you specify the IP address of the Pi
-and a ssh private key file (if used).
+scripts in the firmware generation directories for:
+
+- Xous ([xous-core](https://github.com/betrusted-io/xous-core/blob/main/buildpush.sh))
+- validation firmware image ([betrusted-soc/fw](https://github.com/betrusted-io/betrusted-soc/blob/main/fw/buildpush.sh))
+- the EC image (betrusted-ec - run `cargo xtask push [ip address] [ssh ID file]` in the root of the repo)
+
+Note that you should build *either* Xous *or* the validation firmware image. At the time of writing, it's strongly
+encouraged that you build for Xous, as Xous is actively maintained and the validation firmware (which was used mainly
+for hardware board bringup) is soon to be depracated.
+
+These scripts will build firmware images and copy them to the `code/precursors` directory on the target
+Raspberry Pi automatically, once you specify the IP address of the Pi and a ssh private key file (if used).
 
 Here is a description of the relevant commands, in the order that you would execute them to bring up a board "from factory blank state" (that is, with brand new, blank FLASH memories everywhere):
 
-- `wfx-image.sh` will write the firmware blob for the SiLabs WF200 to the EC's SPI memory space. Note that the WF200 is an untrusted entity, and the system trusts the WF200 precisely as much as it would trust any cable modem or core router.
+- `wfx-image.sh` will write the firmware blob for the SiLabs WF200 to the EC's SPI memory space. Note that the WF200 is an untrusted entity, and the system trusts the WF200 precisely as much as it would trust any cable modem or core router. The firmware image comen from within the `wfx-firmware` submodule within this repo.
 - `config_up5k.sh` will set the QE bit of the EC SPI memory and provision an image located in `precursors/bt-ec.bin` onto the EC SPI. This effectively provisions the EC.
 - `provision_fw.sh` will burn both an FPGA image `precursors/encrypted.bin` and a firmware file `precursors/betrusted-soc.bin` to the correct locations in SoC FLASH space. This is used for the low-level validation (if you plan to use Xous, use `provision_xous.sh`, this is unecessary).
 - `provision_xous.sh` will burn both an FPGA image `precursors/encrypted.bin` and a firmware file `precursors/xous.img` to the correct locations in SoC FLASH space. This used for Xous.
