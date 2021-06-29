@@ -5,7 +5,7 @@ Scripts to provision Precursor using a Raspberry Pi plus the Raspberry Pi debug 
 ## Setup
 
 The core scripts most users will want to use are `provision-fw.sh`, `provision-xous.sh`, `config_up5k.sh`,
-and `wfx_firmware.sh`.
+and `wfx_image.sh`. These are all in the root level of this repository.
 
 These scripts assume the following file structure:
 
@@ -14,11 +14,11 @@ These scripts assume the following file structure:
    |
   code---
         |
-        ------ betrusted-scripts
+        ------ betrusted-scripts    <-- this repo
         |
-        ------ precursors
+        ------ precursors           <-- where firmware artifacts (built on another computer) are staged
 	|
-	------ fomu-flash
+	------ fomu-flash           <-- https://github.com/betrusted-io/fomu-flash
 ```
 
 This repo uses submodules, so be sure to either clone using `--recursive` or call a
