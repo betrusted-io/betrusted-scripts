@@ -37,7 +37,13 @@ If you want GDB debugging capability, you may also want to install [wishbone-too
 "Firmware artefacts" are binary files that correspond to various
 sections of the device firmware. If you are simply trying to flash
 your device from a pre-build, you would receive an archive of the
-binaries and extract them into the `precursors` directory. 
+binaries and extract them into the `precursors` directory.
+
+Copies of the bleeding-edge binaries can be found [on the CI
+server](https://ci.betrusted.io/latest-ci/). They aren't stable, but
+if you also don't want to set up a build environment, it's the fastest
+way to get started. As of writing, there is not yet a "stable" release
+process for Precursor.
 
 If you are trying to build everything from scratch, there are corresponding
 scripts in the firmware generation directories for:
