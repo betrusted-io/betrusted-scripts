@@ -49,7 +49,7 @@ fi
 
 if [ $UPDATE_KERNEL -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/xous.img --raw-binary -a 0x980000 -s -r
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/xous.img --raw-binary -a 0x980000 -s -r -n
     cd ..
 fi
 sudo ./reset-soc.sh
