@@ -37,7 +37,7 @@ md5sum ../precursors/xous.img
 sudo ./reset-soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --bitstream --spi-mode -r
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --raw-binary --spi-mode -r
     cd ..
 fi
 
