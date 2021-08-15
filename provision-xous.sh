@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "WARNING: this script is for un-bricking devices, and will overwrite any secret keys stored in the gateware"
+
 UPDATE_FPGA=1
 UPDATE_KERNEL=1
 UPDATE_LOADER=1
@@ -20,7 +22,7 @@ do
 	    shift
 	    ;;
 	-h|--help)
-	    echo "$0 provisions betrusted. --kernel-skip skips the kernel, --fpga-skip skips the FPGA"
+	    echo "$0 provisions betrusted. --kernel-skip skips the kernel, --fpga-skip skips the FPGA. This script will overwrite any secret keys stored in the gateware."
 	    exit 0
 	    ;;
 	*)
