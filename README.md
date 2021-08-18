@@ -32,9 +32,19 @@ and built for the Pi. Please refer to its repo for compilation and installation 
 
 If you want GDB debugging capability, you may also want to install [wishbone-tool](https://wishbone-utils.readthedocs.io/en/latest/wishbone-tool/) and plug Precursor's USB port into the Raspberry Pi's USB port.
 
+## Limitations
+There is a hard cap on the size of a bitstream that can be handled by the script, due
+to an FFI array that is pre-allocated. It is 20Mbits, or about 2.9Mbytes. The script will
+also segfault if you try to readback-verify very large files (>3.5MiB or so); this may be due
+to stack size limitations imposed by the shell environment. This is because readback verification
+is done in a "single shot" into a large buffer (for performance reasons). Programming a binary
+does not have a parallel limitation because files are broken into erase-sector sized blocks and
+iteratively programmed. In pracitce, I have never seen a verify failure, so for large files
+I just drop the verification step.
+
 ## Usage
 
-"Firmware artefacts" are binary files that correspond to various
+"Firmware artifacts" are binary files that correspond to various
 sections of the device firmware. If you are simply trying to flash
 your device from a pre-build, you would receive an archive of the
 binaries and extract them into the `precursors` directory.
@@ -91,7 +101,34 @@ Some other scripts included here:
 - `reset-ec.sh` -- pulls the CRESET_B line on the EC, forcing it to reload.
 - `start-gdb*.sh` -- will start `wishbone-tools` wish some defaults that enable variations of GDB connectivity, either via USB, TTY, or otherwise. Assumes `crossover` UART unless `-noterm` is used. Requires a .csv file that describes the FPGA in question, which should be provisioned automatically if you use the `buildpush.sh` script in the correpsonding FPGA's repo.
 
-## Contribution Guidelines
+# BBRAM key provisioning
+
+The BBRAM key is an ephemeral (battery-backed) key for the FPGA. You should use this if you have high value,
+ephemeral secrets you wish to protect. Don't use it for archival (because when the battery dies you lose
+your data). It's also useful for development.
+
+The 7-Series FPGA is unable to provision its own BBRAM key, unfortunately. It needs help of an external tool
+to receive the secret material and turn it into JTAG commands. `bbram_helper.py` is a script that does this.
+While it creates no files or intentionally permanent record of the key, if you are worried about safety:
+
+- Run this on a use-once Raspberry Pi that has been airgapped from the network
+- Turn off the device immediately after provisioning
+- Wait at least few minutes (so the DRAM cells fully discharge) before powering on again
+- Ideally, destroy the microSD card used to boot the image, just in case portions of RAM were committed to disk (e.g. as swap).
+
+## Prerequisites
+
+You will need to install the following packages:
+
+- `pexpect` (installed via `pip3 install` or `pip install` based on your distro)
+
+## Running
+
+1. Connect the Precursor device to a Raspberry Pi via the debug HAT (see https://github.com/betrusted-io/betrusted-wiki/wiki/Updating-Your-Device#failsafe-method)
+1. Boot the Precursor device
+1. Run `./bbram_helper.py` and follow the on-screen instructions
+
+# Contribution Guidelines
 
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 
@@ -104,6 +141,6 @@ By participating in this project you agree to abide its terms.
 
 ## License
 
-Copyright © 2019
+Copyright © 2021
 
 Licensed under the [GPL-3.0](https://opensource.org/licenses/GPL-3.0) [LICENSE](LICENSE)
