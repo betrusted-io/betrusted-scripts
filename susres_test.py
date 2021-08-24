@@ -96,7 +96,7 @@ def main():
             print('problem putting device to sleep {}'.format(str(e)))
             GPIO.cleanup()
             exit(0)
-        sleep_duration = random.randrange(2,9)
+        sleep_duration = random.randrange(20,90) / 10.0
         print("waiting {}s to resume...".format(sleep_duration))
         time.sleep(sleep_duration)
         print("resuming/powering on")
