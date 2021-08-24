@@ -4,7 +4,7 @@ Scripts to provision Precursor using a Raspberry Pi plus the Raspberry Pi debug 
 
 ## Setup
 
-The core scripts most users will want to use are `provision_fw.sh`, `provision_xous.sh`, `config_up5k.sh`,
+The core scripts most users will want to use are `update_xous.sh`, `config_up5k.sh`,
 and `wfx_image.sh`. These are all in the root level of this repository.
 
 These scripts assume the following file structure:
@@ -71,10 +71,10 @@ Raspberry Pi automatically, once you specify the IP address of the Pi and a ssh 
 
 Here is a description of the relevant commands, in the order that you would execute them to bring up a board "from factory blank state" (that is, with brand new, blank FLASH memories everywhere):
 
-- `update_xous.sh` will stage updates for your Precursor. The kernel and loader will be immediately effective, but you need to select 'Install gateware update' from the main menu on your device for the gateware to take hold.
+- `update_xous.sh` (**if you have initialized root keys**) stages updates for your Precursor. The kernel and loader will be immediately effective, but you need to select 'Install gateware update' from the main menu on your device for the gateware to take hold. You will also want to sign the Xous update as well.
+- `provision_xous.sh` will do a factory reset of your Precursor. This is also the script to use if you have **not** initialized root keys on the device (that is, it's already in a factory-new state). It burns an FPGA image `precursors/encrypted.bin`, a firmware file `precursors/xous.img`, and a loader `precursors/loader.bin` to the correct locations in SoC FLASH space.
 - `wfx_image.sh` will write the firmware blob for the SiLabs WF200 to the EC's SPI memory space. Note that the WF200 is an untrusted entity, and the system trusts the WF200 precisely as much as it would trust any cable modem or core router. The firmware image comen from within the `wfx-firmware` submodule within this repo.
 - `config_up5k.sh` will set the QE bit of the EC SPI memory and provision an image located in `precursors/bt-ec.bin` onto the EC SPI. This effectively provisions the EC.
-- `provision_xous.sh` will do a factory reset of your Precursor. It burns an FPGA image `precursors/encrypted.bin`, a firmware file `precursors/xous.img`, and a loader `precursors/loader.bin` to the correct locations in SoC FLASH space.
 
 Note that an "encrypted" image is used for the FPGA by default; however,
 for FPGAs that have not been sealed by the end user, the encrypted image
