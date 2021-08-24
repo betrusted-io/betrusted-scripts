@@ -86,7 +86,7 @@ def main():
         power_off()
         try:
             print("suspending")
-            slow_send(console, "sleep\r")
+            slow_send(console, "sleep sus\r")
             print("waiting for suspend feedback")
             console.expect_exact("INFO:susres: PID", 10)
         except Exception as e:
