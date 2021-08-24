@@ -32,17 +32,17 @@ and built for the Pi. Please refer to its repo for compilation and installation 
 
 If you want GDB debugging capability, you may also want to install [wishbone-tool](https://wishbone-utils.readthedocs.io/en/latest/wishbone-tool/) and plug Precursor's USB port into the Raspberry Pi's USB port.
 
-## Limitations
-There is a hard cap on the size of a bitstream that can be handled by the script, due
-to an FFI array that is pre-allocated. It is 20Mbits, or about 2.9Mbytes. The script will
-also segfault if you try to readback-verify very large files (>3.5MiB or so); this may be due
-to stack size limitations imposed by the shell environment. This is because readback verification
-is done in a "single shot" into a large buffer (for performance reasons). Programming a binary
-does not have a parallel limitation because files are broken into erase-sector sized blocks and
-iteratively programmed. In pracitce, I have never seen a verify failure, so for large files
-I just drop the verification step.
+## Xous Updates
 
-## Usage
+This flow assumes you have initialized your root keys, and that you are just looking to apply a built-from-source update.
+
+1. Check out [xous-core](https://github.com/betrusted-io/xous-core)
+1. Run the build & stage script for [linux](https://github.com/betrusted-io/xous-core/blob/main/buildpush.sh) or [windows](https://github.com/betrusted-io/xous-core/blob/main/buildpush.bat). This will stage `soc_csr.bin`, `xous_img.bin`, and `loader.bin` into the `precursors` directory.
+1. Alternatively, download the [bleeding-edge binaries](https://ci.betrusted.io/latest-ci/) and copy them to the `precursors` directory.
+1. Run `update_xous.sh`. Specify any one of `-f`, `-l`, or `-k` to _skip_ burning any of the FPGA, loader or kernel images.
+1. Choose `Install gateware update` from the main menu.
+
+## Unbricking & Factory Reset
 
 "Firmware artifacts" are binary files that correspond to various
 sections of the device firmware. If you are simply trying to flash
@@ -59,7 +59,6 @@ If you are trying to build everything from scratch, there are corresponding
 scripts in the firmware generation directories for:
 
 - Xous ([xous-core](https://github.com/betrusted-io/xous-core/blob/main/buildpush.sh))
-- validation firmware image ([betrusted-soc/fw](https://github.com/betrusted-io/betrusted-soc/blob/main/fw/buildpush.sh))
 - the EC image (betrusted-ec - run `cargo xtask push [ip address] [ssh ID file]` in the root of the repo)
 
 Note that you should build *either* Xous *or* the validation firmware image. At the time of writing, it's strongly
@@ -71,10 +70,9 @@ Raspberry Pi automatically, once you specify the IP address of the Pi and a ssh 
 
 Here is a description of the relevant commands, in the order that you would execute them to bring up a board "from factory blank state" (that is, with brand new, blank FLASH memories everywhere):
 
-- `update_xous.sh` (_if you have initialized root keys_) stages updates for your Precursor. The kernel and loader will be immediately effective, but you need to select 'Install gateware update' from the main menu on your device for the gateware to take hold. You will also want to sign the Xous update as well.
-- `provision_xous.sh` will do a factory reset of your Precursor. This is also the script to use if you have **not** initialized root keys on the device (that is, it's already in a factory-new state). It burns an FPGA image `precursors/encrypted.bin`, a firmware file `precursors/xous.img`, and a loader `precursors/loader.bin` to the correct locations in SoC FLASH space.
 - `wfx_image.sh` will write the firmware blob for the SiLabs WF200 to the EC's SPI memory space. Note that the WF200 is an untrusted entity, and the system trusts the WF200 precisely as much as it would trust any cable modem or core router. The firmware image comen from within the `wfx-firmware` submodule within this repo.
 - `config_up5k.sh` will set the QE bit of the EC SPI memory and provision an image located in `precursors/bt-ec.bin` onto the EC SPI. This effectively provisions the EC.
+- `provision_xous.sh` will do a factory reset of your Precursor. This is also the script to use if you have **not** initialized root keys on the device (that is, it's already in a factory-new state). It burns an FPGA image `precursors/encrypted.bin`, a firmware file `precursors/xous.img`, and a loader `precursors/loader.bin` to the correct locations in SoC FLASH space.
 
 Note that an "encrypted" image is used for the FPGA by default; however,
 for FPGAs that have not been sealed by the end user, the encrypted image
@@ -90,6 +88,16 @@ Some other scripts included here:
 - `reset_soc.sh` -- pulls the PROG_N line on the SoC, forcing it to reload. Also resets the SPI ROM out of OPI mode.
 - `reset_ec.sh` -- pulls the CRESET_B line on the EC, forcing it to reload.
 - `start_gdb*.sh` -- will start `wishbone-tools` wish some defaults that enable variations of GDB connectivity, either via USB, TTY, or otherwise. Assumes `crossover` UART unless `-noterm` is used. Requires a .csv file that describes the FPGA in question, which should be provisioned automatically if you use the `buildpush.sh` script in the correpsonding FPGA's repo.
+
+## Limitations
+There is a hard cap on the size of a bitstream that can be handled by the script, due
+to an FFI array that is pre-allocated. It is 20Mbits, or about 2.9Mbytes. The script will
+also segfault if you try to readback-verify very large files (>3.5MiB or so); this may be due
+to stack size limitations imposed by the shell environment. This is because readback verification
+is done in a "single shot" into a large buffer (for performance reasons). Programming a binary
+does not have a parallel limitation because files are broken into erase-sector sized blocks and
+iteratively programmed. In pracitce, I have never seen a verify failure, so for large files
+I just drop the verification step.
 
 # BBRAM key provisioning
 
