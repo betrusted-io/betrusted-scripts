@@ -51,7 +51,7 @@ then
     fi
 fi
 
-sudo ./reset-soc.sh
+sudo ./reset_soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
 then
     cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --raw-binary --spi-mode -r
@@ -69,4 +69,4 @@ then
     cd jtag-tools && ./jtag_gpio.py -f ../../precursors/xous.img --raw-binary -a 0x980000 -s -r -n
     cd ..
 fi
-sudo ./reset-soc.sh
+sudo ./reset_soc.sh

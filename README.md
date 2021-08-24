@@ -4,7 +4,7 @@ Scripts to provision Precursor using a Raspberry Pi plus the Raspberry Pi debug 
 
 ## Setup
 
-The core scripts most users will want to use are `provision-fw.sh`, `provision-xous.sh`, `config_up5k.sh`,
+The core scripts most users will want to use are `provision_fw.sh`, `provision_xous.sh`, `config_up5k.sh`,
 and `wfx_image.sh`. These are all in the root level of this repository.
 
 These scripts assume the following file structure:
@@ -71,20 +71,10 @@ Raspberry Pi automatically, once you specify the IP address of the Pi and a ssh 
 
 Here is a description of the relevant commands, in the order that you would execute them to bring up a board "from factory blank state" (that is, with brand new, blank FLASH memories everywhere):
 
-- `wfx-image.sh` will write the firmware blob for the SiLabs WF200 to the EC's SPI memory space. Note that the WF200 is an untrusted entity, and the system trusts the WF200 precisely as much as it would trust any cable modem or core router. The firmware image comen from within the `wfx-firmware` submodule within this repo.
+- `update_xous.sh` will stage updates for your Precursor. The kernel and loader will be immediately effective, but you need to select 'Install gateware update' from the main menu on your device for the gateware to take hold.
+- `wfx_image.sh` will write the firmware blob for the SiLabs WF200 to the EC's SPI memory space. Note that the WF200 is an untrusted entity, and the system trusts the WF200 precisely as much as it would trust any cable modem or core router. The firmware image comen from within the `wfx-firmware` submodule within this repo.
 - `config_up5k.sh` will set the QE bit of the EC SPI memory and provision an image located in `precursors/bt-ec.bin` onto the EC SPI. This effectively provisions the EC.
-- `provision_fw.sh` will burn both an FPGA image `precursors/encrypted.bin` and a firmware file `precursors/betrusted-soc.bin` to the correct locations in SoC FLASH space. This is used for the low-level validation (if you plan to use Xous, use `provision_xous.sh`, this is unecessary).
-- `provision_xous.sh` will burn both an FPGA image `precursors/encrypted.bin` and a firmware file `precursors/xous.img` to the correct locations in SoC FLASH space. This used for Xous.
-
-The validation image boots directly from SPI, but Xous boots from
-internal ROM, which is why the provisioning scripts are different. The
-intention is that eventually cryptographic boot/signature checks will
-be made available in the ROM that make it safer to load the Xous OS
-image from SPI, but these have not yet been written, whereas the
-validation firmware's intention is a factory test to be run only in
-the factory and then erased; however it's also very useful for developers
-who want direct access to the hardware or who want to develop or port their
-own OS to Precursor.
+- `provision_xous.sh` will do a factory reset of your Precursor. It burns an FPGA image `precursors/encrypted.bin`, a firmware file `precursors/xous.img`, and a loader `precursors/loader.bin` to the correct locations in SoC FLASH space.
 
 Note that an "encrypted" image is used for the FPGA by default; however,
 for FPGAs that have not been sealed by the end user, the encrypted image
@@ -97,9 +87,9 @@ Some other scripts included here:
 - `vbus.sh` -- takes an argument `0` or `1` to turn off or on the power to Precursor. Do not turn on power to Precursor if you have it already plugged into a charger. This script is mostly useful for low-level debug of stand-alone boards.
 - `uart_fpga.sh` -- mux the SoC UART to the Rpi `/dev/ttyS0`
 - `uart_up5k.sh` -- mux the EC UART to the Rpi `/dev/ttyS0`
-- `reset-soc.sh` -- pulls the PROG_N line on the SoC, forcing it to reload. Also resets the SPI ROM out of OPI mode.
-- `reset-ec.sh` -- pulls the CRESET_B line on the EC, forcing it to reload.
-- `start-gdb*.sh` -- will start `wishbone-tools` wish some defaults that enable variations of GDB connectivity, either via USB, TTY, or otherwise. Assumes `crossover` UART unless `-noterm` is used. Requires a .csv file that describes the FPGA in question, which should be provisioned automatically if you use the `buildpush.sh` script in the correpsonding FPGA's repo.
+- `reset_soc.sh` -- pulls the PROG_N line on the SoC, forcing it to reload. Also resets the SPI ROM out of OPI mode.
+- `reset_ec.sh` -- pulls the CRESET_B line on the EC, forcing it to reload.
+- `start_gdb*.sh` -- will start `wishbone-tools` wish some defaults that enable variations of GDB connectivity, either via USB, TTY, or otherwise. Assumes `crossover` UART unless `-noterm` is used. Requires a .csv file that describes the FPGA in question, which should be provisioned automatically if you use the `buildpush.sh` script in the correpsonding FPGA's repo.
 
 # BBRAM key provisioning
 

@@ -38,7 +38,7 @@ md5sum ../precursors/xous.img
 # ensure that the power is on, this is a footgun for new users
 sudo ./vbus.sh 1
 
-sudo ./reset-soc.sh
+sudo ./reset_soc.sh
 if [ $UPDATE_LOADER -eq 1 ]
 then
     cd jtag-tools && ./jtag_gpio.py -f ../../precursors/loader.bin --raw-binary -a 0x500000 -s -r -n
@@ -58,4 +58,4 @@ then
     echo "Gateware update staged. To apply, select 'Install gateware update' from the root menu of your device."
 fi
 
-sudo ./reset-soc.sh
+sudo ./reset_soc.sh
