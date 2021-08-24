@@ -414,7 +414,7 @@ def main():
 
     GPIO.setwarnings(False)
     
-    parser = argparse.ArgumentParser(description="Drive JTAG via Rpi GPIO")
+    parser = argparse.ArgumentParser(description="Receive and burn BBRAM keys into a Precursor")
     parser.add_argument(
         "-d", "--debug", help="turn on debugging spew", default=False, action="store_true"
     )
