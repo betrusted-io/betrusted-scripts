@@ -5,6 +5,7 @@ echo "WARNING: this script is for un-bricking devices, and will overwrite any se
 UPDATE_FPGA=1
 UPDATE_KERNEL=1
 UPDATE_LOADER=1
+SKIP_PROMPT=0
 
 for arg in "$@"
 do
@@ -21,6 +22,10 @@ do
 	    UPDATE_FPGA=0
 	    shift
 	    ;;
+	-y|--yes)
+	    SKIP_PROMPT=1
+	    shift
+	    ;;
 	-h|--help)
 	    echo "$0 provisions betrusted. --kernel-skip skips the kernel, --fpga-skip skips the FPGA. This script will overwrite any secret keys stored in the gateware."
 	    exit 0
@@ -35,6 +40,16 @@ done
 md5sum ../precursors/soc_csr.bin
 md5sum ../precursors/loader.bin
 md5sum ../precursors/xous.img
+
+if [ $SKIP_PROMPT -eq 0 ]
+then
+    read -p "This script does a factory reset. You will lose your root keys if you update the FPGA. Proceed? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]
+    then
+	[[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1
+    fi
+fi
 
 sudo ./reset-soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
