@@ -56,6 +56,7 @@ then
     cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --raw-binary -a 0x280000 --spi-mode -r -n
     cd ..
     echo "Gateware update staged. To apply, select 'Install gateware update' from the root menu of your device."
+    echo "If you have not initialized root keys yet, use provision_xous.sh instead to directly overwrite the image. This deletes any keys and replaces them with defaults."
 fi
 
 sudo ./reset_soc.sh
