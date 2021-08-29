@@ -44,6 +44,9 @@ def main():
     parser.add_argument(
         "-d", "--debug", help="turn on debugging spew", default=False, action="store_true"
     )
+    parser.add_argument(
+        "-t", "--touch-and-go", help="touch-and-go mode", default=False, action="store_true"
+    )
     args = parser.parse_args()
     if args.debug:
        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -80,7 +83,7 @@ def main():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup((VBUS_PIN, RESET_PIN), GPIO.OUT)
 
-    for i in range(20):
+    for i in range(30):
         print("****iteration {}".format(i))
         print("powering off")
         power_off()
@@ -94,27 +97,31 @@ def main():
             for line in log.split('\n'):
                 print(line)
             print('problem putting device to sleep {}'.format(str(e)))
+            power_on()  # leave the script with the power on.
             GPIO.cleanup()
             exit(0)
-        sleep_duration = random.randrange(10,80) / 10.0
+        sleep_duration = random.randrange(20,80) / 10.0  # was 10,80
         print("waiting {}s until waking up device...".format(sleep_duration))
         time.sleep(sleep_duration)
         print("resuming/powering on")
         power_on()
-        try:
-            console.expect_exact("Jumping to loader", 15)
-        except Exception as e:
-            log = console.before.decode('utf-8')
-            for line in log.split('\n'):
-                print(line)
-            print("didn't resume, {}".format(str(e)))
-            GPIO.cleanup()
-            exit(0)
-        time.sleep(5) # wait for boot
-        wake_duration = random.randrange(20,90) / 10.0
+        if args.touch_and_go == False:
+            try:
+                console.expect_exact("Jumping to loader", 15)
+            except Exception as e:
+                log = console.before.decode('utf-8')
+                for line in log.split('\n'):
+                    print(line)
+                print("didn't resume, {}".format(str(e)))
+                power_on()  # leave the script with the power on.
+                GPIO.cleanup()
+                exit(0)
+            time.sleep(5) # wait for boot
+        wake_duration = random.randrange(40,90) / 10.0 # was 20,90
         print("waiting {}s before issuing sleep command...".format(wake_duration))
         time.sleep(wake_duration)
 
+    power_on()  # leave the script with the power on.
     GPIO.cleanup()
     
 if __name__ == "__main__":
