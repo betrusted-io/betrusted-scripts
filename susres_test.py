@@ -83,7 +83,7 @@ def main():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup((VBUS_PIN, RESET_PIN), GPIO.OUT)
 
-    for i in range(30):
+    for i in range(100):
         print("****iteration {}".format(i))
         print("powering off")
         power_off()
@@ -100,7 +100,7 @@ def main():
             power_on()  # leave the script with the power on.
             GPIO.cleanup()
             exit(0)
-        sleep_duration = random.randrange(20,80) / 10.0  # was 10,80
+        sleep_duration = random.randrange(15,50) / 10.0  # was 10,80
         print("waiting {}s until waking up device...".format(sleep_duration))
         time.sleep(sleep_duration)
         print("resuming/powering on")
@@ -117,7 +117,7 @@ def main():
                 GPIO.cleanup()
                 exit(0)
             time.sleep(5) # wait for boot
-        wake_duration = random.randrange(40,90) / 10.0 # was 20,90
+        wake_duration = random.randrange(30,80) / 10.0 # was 20,90
         print("waiting {}s before issuing sleep command...".format(wake_duration))
         time.sleep(wake_duration)
 
