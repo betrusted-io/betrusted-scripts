@@ -350,19 +350,19 @@ def main():
         "-s", "--staging", required=False, help="Stage an update to apply", type=str, nargs='?', metavar=('SoC gateware file'), const='../precursors/soc_csr.bin'
     )
     parser.add_argument(
-        "-l", "--loader", required=False, help="Loader", type=str, nargs='?', metavar=('loader file'), const='../precursors/loader.bin'
+        "-l", "--loader", required=False, help="Loader", type=str, nargs='?', metavar=('loader file'), const='../target/riscv32imac-unknown-xous-elf/release/loader.bin'
     )
     parser.add_argument(
-        "-k", "--kernel", required=False, help="Kernel", type=str, nargs='?', metavar=('kernel file'), const='../precursors/xous.img'
+        "-k", "--kernel", required=False, help="Kernel", type=str, nargs='?', metavar=('kernel file'), const='../target/riscv32imac-unknown-xous-elf/release/xous.img'
     )
     parser.add_argument(
-        "-e", "--ec", required=False, help="EC gateware", type=str, nargs='?', metavar=('EC gateware package'), const='../precursors/ec_fw.bin'
+        "-e", "--ec", required=False, help="EC gateware", type=str, nargs='?', metavar=('EC gateware package'), const='ec_fw.bin'
     )
     parser.add_argument(
-        "-w", "--wf200", required=False, help="WF200 firmware", type=str, nargs='?', metavar=('WF200 firmware package'), const='../precursors/wf200_fw.bin'
+        "-w", "--wf200", required=False, help="WF200 firmware", type=str, nargs='?', metavar=('WF200 firmware package'), const='wf200_fw.bin'
     )
     parser.add_argument(
-        "--audiotest", required=False, help="Test audio clip (must be 8kHz WAV)", type=str, nargs='?', metavar=('Test audio clip'), const="../precursors/testaudio.wav"
+        "--audiotest", required=False, help="Test audio clip (must be 8kHz WAV)", type=str, nargs='?', metavar=('Test audio clip'), const="testaudio.wav"
     )
     parser.add_argument(
         "--peek", required=False, help="Inspect an address", type=auto_int, metavar=('ADDR')
@@ -450,7 +450,7 @@ def main():
         LOC_AUDIO  = 0x06340000
         LEN_AUDIO  = 0x01C40000
     elif args.force == True:
-        # try the v0.8 offsets
+        # try the v0.9 offsets
         LOC_SOC    = 0x00000000
         LOC_STAGING= 0x00280000
         LOC_LOADER = 0x00500000
@@ -507,13 +507,19 @@ def main():
             pc_usb.flash_program(LOC_LOADER, image, verify=verify)
 
     if args.soc != None:
-        print("This will overwrite any secret keys in your device. Continue? (y/n)")
-        confirm = input()
-        if len(confirm) > 0 and confirm.lower()[:1] == 'y':
+        if args.force == True:
             print("Programming SoC gateware {}".format(args.soc))
             with open(args.soc, "rb") as f:
                 image = f.read()
                 pc_usb.flash_program(LOC_SOC, image, verify=verify)
+        else:
+            print("This will overwrite any secret keys in your device. Continue? (y/n)")
+            confirm = input()
+            if len(confirm) > 0 and confirm.lower()[:1] == 'y':
+                print("Programming SoC gateware {}".format(args.soc))
+                with open(args.soc, "rb") as f:
+                    image = f.read()
+                    pc_usb.flash_program(LOC_SOC, image, verify=verify)
 
     if args.audiotest != None:
         print("Loading audio test clip {}".format(args.audiotest))
