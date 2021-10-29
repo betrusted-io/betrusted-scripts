@@ -25,6 +25,7 @@ TMS_pin = 17
 TDI_pin = 27  # TDI on FPGA, out for this script
 TDO_pin = 22  # TDO on FPGA, in for this script
 PRG_pin = 24
+PWR_pin = 21
 
 class JtagLeg(Enum):
     DR = 0
@@ -86,7 +87,7 @@ def reset_fpga():
     global PRG_pin
 
     GPIO.output(PRG_pin, 0)
-    time.sleep(0.1)
+    time.sleep(0.3)
     GPIO.output(PRG_pin, 1)
 
 
@@ -408,12 +409,17 @@ def expand_binary(digits, value):
     return '%0*d' % (digits, int(bin(value)[2:]))
 
 def main():
-    global TCK_pin, TMS_pin, TDI_pin, TDO_pin, PRG_pin
+    global TCK_pin, TMS_pin, TDI_pin, TDO_pin, PRG_pin, PWR_pin
     global jtag_legs, jtag_results
     global CONSOLE_SENTINEL
 
     GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
     
+    # make sure the VBUS power is turned on for the BBRAM burn
+    GPIO.setup(PWR_pin, GPIO.OUT)
+    GPIO.output(PWR_pin, 1)
+
     parser = argparse.ArgumentParser(description="Receive and burn BBRAM keys into a Precursor")
     parser.add_argument(
         "-d", "--debug", help="turn on debugging spew", default=False, action="store_true"
@@ -600,8 +606,6 @@ def main():
         logging.debug(legs)
 
     # burn the BBRAM keys by running the jtag_legs "script"
-    GPIO.setmode(GPIO.BCM)
-
     GPIO.setup((TCK_pin, TMS_pin, TDI_pin), GPIO.OUT)
     GPIO.setup(TDO_pin, GPIO.IN)
     GPIO.setup(PRG_pin, GPIO.OUT)
@@ -617,8 +621,16 @@ def main():
 #            result = jtag_result.pop()
             # printout happens in situ
 
-    time.sleep(0.5)
+    print("Programming done, please wait while we reset the FPGA...")
+    time.sleep(1.0)
     reset_fpga()
+    time.sleep(1.0)
+
+    GPIO.output(PWR_pin, 0)
+    time.sleep(4.0)
+    GPIO.output(PWR_pin, 1)
+    time.sleep(1.0)
+    
     GPIO.cleanup()
 
     print("Key burning process has concluded.")
