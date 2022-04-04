@@ -119,6 +119,7 @@ While it creates no files or intentionally permanent record of the key, if you a
 You will need to install the following packages:
 
 - `pexpect` (installed via `pip3 install` or `pip install` based on your distro)
+- `pycrypto` (installed via `pip3 install` or `pip install` based on your distro)
 
 ## Running
 
