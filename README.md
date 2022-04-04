@@ -116,10 +116,11 @@ While it creates no files or intentionally permanent record of the key, if you a
 
 ## Prerequisites
 
-You will need to install the following packages:
+You will need to install the following packages  (installed via `pip3 install` or `pip install` based on your distro):
 
-- `pexpect` (installed via `pip3 install` or `pip install` based on your distro)
-- `pycrypto` (installed via `pip3 install` or `pip install` based on your distro)
+- `pexpect`
+- `pycrypto`
+- `cffi`
 
 ## Running
 
