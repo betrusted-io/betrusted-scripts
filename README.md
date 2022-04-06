@@ -121,6 +121,7 @@ You will need to install the following packages  (installed via `pip3 install` o
 - `pexpect`
 - `pycrypto`
 - `cffi`
+- `progressbar2`
 
 ## Running
 
