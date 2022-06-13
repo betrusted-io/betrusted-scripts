@@ -8,6 +8,7 @@ import array
 import sys
 import hashlib
 import csv
+import urllib.request
 
 from progressbar.bar import ProgressBar
 
@@ -108,6 +109,13 @@ class PrecursorUsb:
         if len(data) == 0:
             return
 
+        # the actual "addr" doesn't matter for a burst_write, because it's specified
+        # as an argument to the flash_pp4b command. We lock out access to the base of
+        # SPINOR because it's part of the gateware, so, we pick a "safe" address to
+        # write to instead. The page write responder will aggregate any write data
+        # to anywhere in the SPINOR address range.
+        writebuf_addr = 0x2098_0000 # the current start address of the kernel, for example
+
         maxlen = 4096
         packet_count = len(data) // maxlen
         if (len(data) % maxlen) != 0:
@@ -125,7 +133,8 @@ class PrecursorUsb:
 
             wdata = array.array('B', data[(pkt_num * maxlen):(pkt_num * maxlen) + bufsize])
             numwritten = self.dev.ctrl_transfer(bmRequestType=(0x00 | 0x43), bRequest=0,
-                wValue=(cur_addr & 0xffff), wIndex=((cur_addr >> 16) & 0xffff),
+                # note use of writebuf_addr instead of cur_addr -> see comment above about the quirk of write addressing
+                wValue=(writebuf_addr & 0xffff), wIndex=((writebuf_addr >> 16) & 0xffff),
                 data_or_wLength=wdata, timeout=500)
 
             if numwritten != bufsize:
@@ -196,10 +205,16 @@ class PrecursorUsb:
             self.spinor_command_value(exec=1, lock_reads=1, cmd_code=self.PP4B, has_arg=1, data_words=(data_bytes//2))
         )
 
-    def load_csrs(self):
+    def load_csrs(self, fname=None):
         LOC_CSRCSV = 0x20277000 # this address shouldn't change because it's how we figure out our version number
+        # CSR extraction:
+        # dd if=soc_csr.bin of=csr_data_0.9.6.bin skip=2524 count=32 bs=1024
+        if fname == None:
+            csr_data = self.burst_read(LOC_CSRCSV, 0x8000)
+        else:
+            with open(fname, "rb") as f:
+                csr_data = f.read(0x8000)
 
-        csr_data = self.burst_read(LOC_CSRCSV, 0x8000)
         hasher = hashlib.sha512()
         hasher.update(csr_data[:0x7FC0])
         digest = hasher.digest()
@@ -226,6 +241,57 @@ class PrecursorUsb:
                 if 'git_rev' in row[0]:
                     self.gitrev = row[1]
         print("Using SoC {} registers".format(self.gitrev))
+
+    def erase_region(self, addr, length):
+        # ID code check
+        code = self.flash_rdid(1)
+        print("ID code bytes 1-2: 0x{:08x}".format(code))
+        if code != 0x8080c2c2:
+            print("ID code mismatch")
+            exit(1)
+        code = self.flash_rdid(2)
+        print("ID code bytes 2-3: 0x{:08x}".format(code))
+        if code != 0x3b3b8080:
+            print("ID code mismatch")
+            exit(1)
+
+        # block erase
+        progress = ProgressBar(min_value=0, max_value=length, prefix='Erasing ').start()
+        erased = 0
+        while erased < length:
+            self.ping_wdt()
+            if (length - erased >= 65536) and ((addr & 0xFFFF) == 0):
+                blocksize = 65536
+            else:
+                blocksize = 4096
+
+            while True:
+                self.flash_wren()
+                status = self.flash_rdsr(1)
+                if status & 0x02 != 0:
+                    break
+
+            if blocksize == 4096:
+                self.flash_se4b(addr + erased)
+            else:
+                self.flash_be4b(addr + erased)
+            erased += blocksize
+
+            while (self.flash_rdsr(1) & 0x01) != 0:
+                pass
+
+            result = self.flash_rdscur()
+            if result & 0x60 != 0:
+                print("E_FAIL/P_FAIL set on erase, programming may fail, but trying anyways...")
+
+            if self.flash_rdsr(1) & 0x02 != 0:
+                self.flash_wrdi()
+                while (self.flash_rdsr(1) & 0x02) != 0:
+                    pass
+            if erased < length:
+                progress.update(erased)
+        progress.finish()
+        print("Erase finished")
 
     # addr is relative to the base of FLASH (not absolute)
     def flash_program(self, addr, data, verify=True):
@@ -305,7 +371,7 @@ class PrecursorUsb:
                 if status & 0x02 != 0:
                     break
 
-            self.burst_write(flash_region, data[written:(written+chunklen)])
+            self.burst_write(self.register('spinor_wdata'), data[written:(written+chunklen)])
             self.flash_pp4b(addr + written, chunklen)
 
             written += chunklen
@@ -329,7 +395,17 @@ class PrecursorUsb:
             self.ping_wdt()
             rbk_data = self.burst_read(addr + flash_region, len(data))
             if rbk_data != data:
+                errs = 0
+                err_thresh = 64
+                for i in range(0, len(rbk_data)):
+                    if rbk_data[i] != data[i]:
+                        if errs < err_thresh:
+                            print("Error at 0x{:x}: {:x}->{:x}".format(i, data[i], rbk_data[i]))
+                        errs += 1
+                    if errs == err_thresh:
+                        print("Too many errors, stopping print...")
                 print("Errors were found in verification, programming failed")
+                print("Total byte errors: {}".format(errs))
                 exit(1)
             else:
                 print("Verification passed.")
@@ -353,6 +429,15 @@ def main():
         "-l", "--loader", required=False, help="Loader", type=str, nargs='?', metavar=('loader file'), const='../target/riscv32imac-unknown-xous-elf/release/loader.bin'
     )
     parser.add_argument(
+        "--disable-boot", required=False, action='store_true', help="Disable system boot (for use in multi-stage updates)"
+    )
+    parser.add_argument(
+        "--enable-boot-wipe", required=False, action='store_true', help="Re-enable system boot for factory reset. Requires both a loader (-l) and a soc (--soc) spec. Overwrites root keys."
+    )
+    parser.add_argument(
+        "--enable-boot-update", required=False, action='store_true', help="Re-enable system boot for updates. Requires both a loader (-l) and a staging (-s) spec. Stages SOC without overwriting root keys."
+    )
+    parser.add_argument(
         "-k", "--kernel", required=False, help="Kernel", type=str, nargs='?', metavar=('kernel file'), const='../target/riscv32imac-unknown-xous-elf/release/xous.img'
     )
     parser.add_argument(
@@ -360,6 +445,9 @@ def main():
     )
     parser.add_argument(
         "-w", "--wf200", required=False, help="WF200 firmware", type=str, nargs='?', metavar=('WF200 firmware package'), const='wf200_fw.bin'
+    )
+    parser.add_argument(
+        "--erase-pddb", help="Erase the PDDB area", action="store_true"
     )
     parser.add_argument(
         "--audiotest", required=False, help="Test audio clip (must be 8kHz WAV)", type=str, nargs='?', metavar=('Test audio clip'), const="testaudio.wav"
@@ -387,6 +475,12 @@ def main():
     )
     parser.add_argument(
         "--bounce", help="cycle the device through a reset", action="store_true"
+    )
+    parser.add_argument(
+        "--factory-new", help="reset the entire image to mimic exactly what comes out of the factory, including temp files for testing. Warning: this will take a long time.", action="store_true"
+    )
+    parser.add_argument(
+        "--override-csr", required=False, help="CSR file to use instead of CSR values stored with the image. Used to recover in case of partial update of soc_csr.bin", type=str,
     )
     args = parser.parse_args()
 
@@ -430,43 +524,117 @@ def main():
         #     print("match")
         exit(0)
 
-    pc_usb.load_csrs() # prime the CSR values
+    pc_usb.load_csrs(args.override_csr) # prime the CSR values
     if "v0.8" in pc_usb.gitrev:
-        LOC_SOC    = 0x00000000
-        LOC_STAGING= 0x00280000
-        LOC_LOADER = 0x00500000
-        LOC_KERNEL = 0x00980000
-        LOC_WF200  = 0x07F80000
-        LOC_EC     = 0x07FCE000
-        LOC_AUDIO  = 0x06340000
-        LEN_AUDIO  = 0x01C40000
+        locs = {
+           "LOC_SOC"    : [0x0000_0000, "soc_csr.bin"],
+           "LOC_STAGING": [0x0028_0000, "pass"],
+           "LOC_LOADER" : [0x0050_0000, "loader.bin"],
+           "LOC_KERNEL" : [0x0098_0000, "xous.img"],
+           "LOC_WF200"  : [0x07F8_0000, "pass"],
+           "LOC_EC"     : [0x07FC_E000, "pass"],
+           "LOC_AUDIO"  : [0x0634_0000, "short_8khz.wav"],
+           "LEN_AUDIO"  : [0x01C4_0000, "pass"],
+           "LOC_PDDB"   : [0x0100_0000, "pass"],
+        }
     elif "v0.9" in pc_usb.gitrev:
-        LOC_SOC    = 0x00000000
-        LOC_STAGING= 0x00280000
-        LOC_LOADER = 0x00500000
-        LOC_KERNEL = 0x00980000
-        LOC_WF200  = 0x07F80000
-        LOC_EC     = 0x07FCE000
-        LOC_AUDIO  = 0x06340000
-        LEN_AUDIO  = 0x01C40000
+        locs = {
+            "LOC_SOC"    : [0x0000_0000, "soc_csr.bin"],
+            "LOC_STAGING": [0x0028_0000, "pass"],
+            "LOC_LOADER" : [0x0050_0000, "loader.bin"],
+            "LOC_KERNEL" : [0x0098_0000, "xous.img"],
+            "LOC_WF200"  : [0x07F8_0000, "pass"],
+            "LOC_EC"     : [0x07FC_E000, "pass"],
+            "LOC_AUDIO"  : [0x0634_0000, "short_8khz.wav"],
+            "LEN_AUDIO"  : [0x01C4_0000, "pass"],
+            "LOC_PDDB"   : [0x01D8_0000, "pass"],
+        }
     elif args.force == True:
         # try the v0.9 offsets
-        LOC_SOC    = 0x00000000
-        LOC_STAGING= 0x00280000
-        LOC_LOADER = 0x00500000
-        LOC_KERNEL = 0x00980000
-        LOC_WF200  = 0x07F80000
-        LOC_EC     = 0x07FCE000
-        LOC_AUDIO  = 0x06340000
-        LEN_AUDIO  = 0x01C40000
+        locs = {
+           "LOC_SOC"    : [0x00000000, "soc_csr.bin"],
+           "LOC_STAGING": [0x00280000, "pass"],
+           "LOC_LOADER" : [0x00500000, "loader.bin"],
+           "LOC_KERNEL" : [0x00980000, "xous.img"],
+           "LOC_WF200"  : [0x07F80000, "pass"],
+           "LOC_EC"     : [0x07FCE000, "pass"],
+           "LOC_AUDIO"  : [0x06340000, "short_8khz.wav"],
+           "LEN_AUDIO"  : [0x01C40000, "pass"],
+           "LOC_PDDB"   : [0x01D80000, "pass"],
+        }
     else:
-        print("SoC is from an unknow rev '{}', use --force to continue anyways with v0.8 firmware offsets".format(pc_usb.load_csrs()))
+        print("SoC is from an unknow rev '{}', use --force to continue anyways with v0.9 firmware offsets".format(pc_usb.load_csrs()))
         exit(1)
 
     vexdbg_addr = int(pc_usb.regions['vexriscv_debug'][0], 0)
     pc_usb.ping_wdt()
     print("Halting CPU.")
     pc_usb.poke(vexdbg_addr, 0x00020000)
+
+    if args.erase_pddb:
+        print("Erasing PDDB region")
+        pc_usb.erase_region(locs['LOC_PDDB'][0], locs['LOC_EC'][0] - locs['LOC_PDDB'][0])
+
+    if args.disable_boot:
+        print("Disabling boot")
+        pc_usb.erase_region(locs['LOC_LOADER'][0], 1024 * 256)
+
+    if args.enable_boot_wipe:
+        if args.loader == None:
+            print("Must provide both a loader and soc image")
+        if args.soc == None:
+            print("Must provide both a soc and loader image")
+        print("Enabling boot with {} and {}".format(args.loader, args.soc))
+        print("Programming loader image {}".format(args.loader))
+        with open(args.loader, "rb") as f:
+            image = f.read()
+            pc_usb.flash_program(locs['LOC_LOADER'][0], image, verify=verify)
+        print("Programming SoC gateware".format(args.soc))
+        with open(args.soc, "rb") as f:
+            image = f.read()
+            if verify == True:
+                print("Note: SoC verification is not possible as readback is locked for security purposes")
+            pc_usb.flash_program(locs['LOC_SOC'][0], image, verify=False)
+
+        print("Erasing PDDB root structures")
+        pc_usb.erase_region(locs['LOC_PDDB'][0], 1024 * 1024)
+
+        print("Resuming CPU.")
+        pc_usb.poke(vexdbg_addr, 0x02000000)
+
+        print("Resetting SOC...")
+        try:
+            pc_usb.poke(pc_usb.register('reboot_soc_reset'), 0xac, display=False)
+        except usb.core.USBError:
+            pass # we expect an error because we reset the SOC and that includes the USB core
+        exit(0)
+
+    if args.enable_boot_update:
+        if args.loader == None:
+            print("Must provide both a loader and soc image")
+        if args.staging == None:
+            print("Must provide both a soc and loader image")
+        print("Enabling boot with {} and {}".format(args.loader, args.staging))
+        print("Programming loader image {}".format(args.loader))
+        with open(args.loader, "rb") as f:
+            image = f.read()
+            pc_usb.flash_program(locs['LOC_LOADER'][0], image, verify=verify)
+        print("Staging SoC gateware".format(args.staging))
+        with open(args.staging, "rb") as f:
+            image = f.read()
+            if verify == True:
+                print("Note: staging area verification is not possible as readback is locked for security purposes")
+            pc_usb.flash_program(locs['LOC_STAGING'][0], image, verify=verify)
+
+        print("Resuming CPU.")
+        pc_usb.poke(vexdbg_addr, 0x02000000)
+
+        print("Resetting SOC...")
+        try:
+            pc_usb.poke(pc_usb.register('reboot_soc_reset'), 0xac, display=False)
+        except usb.core.USBError:
+            pass # we expect an error because we reset the SOC and that includes the USB core
+        exit(0)
 
     if args.image:
         image_file, addr_str = args.image
@@ -480,55 +648,80 @@ def main():
         print("Staging EC firmware package '{}' in SOC memory space...".format(args.ec))
         with open(args.ec, "rb") as f:
             image = f.read()
-            pc_usb.flash_program(LOC_EC, image, verify=verify)
+            pc_usb.flash_program(locs['LOC_EC'][0], image, verify=verify)
 
     if args.wf200 != None:
         print("Staging WF200 firmware package '{}' in SOC memory space...".format(args.wf200))
         with open(args.wf200, "rb") as f:
             image = f.read()
-            pc_usb.flash_program(LOC_WF200, image, verify=verify)
+            pc_usb.flash_program(locs['LOC_WF200'][0], image, verify=verify)
 
     if args.staging != None:
-        print("Programming SoC gateware {}".format(args.soc))
+        print("Staging SoC gateware {}".format(args.soc))
         with open(args.staging, "rb") as f:
             image = f.read()
-            pc_usb.flash_program(LOC_STAGING, image, verify=verify)
+            if verify == True:
+                print("Note: staging area verification is not possible as readback is locked for security purposes")
+            pc_usb.flash_program(locs['LOC_STAGING'][0], image, verify=verify)
 
     if args.kernel != None:
         print("Programming kernel image {}".format(args.kernel))
         with open(args.kernel, "rb") as f:
             image = f.read()
-            pc_usb.flash_program(LOC_KERNEL, image, verify=verify)
+            pc_usb.flash_program(locs['LOC_KERNEL'][0], image, verify=verify)
 
     if args.loader != None:
         print("Programming loader image {}".format(args.loader))
         with open(args.loader, "rb") as f:
             image = f.read()
-            pc_usb.flash_program(LOC_LOADER, image, verify=verify)
+            pc_usb.flash_program(locs['LOC_LOADER'][0], image, verify=verify)
 
     if args.soc != None:
         if args.force == True:
             print("Programming SoC gateware {}".format(args.soc))
             with open(args.soc, "rb") as f:
                 image = f.read()
-                pc_usb.flash_program(LOC_SOC, image, verify=verify)
+                if verify == True:
+                    print("Note: SoC verification is not possible as readback is locked for security purposes")
+                pc_usb.flash_program(locs['LOC_SOC'][0], image, verify=False)
+                print("Erasing PDDB root structures")
+                pc_usb.erase_region(locs['LOC_PDDB'][0], 1024 * 1024)
         else:
-            print("This will overwrite any secret keys in your device. Continue? (y/n)")
+            print("This will overwrite any secret keys in your device and erase PDDB keys. Continue? (y/n)")
             confirm = input()
             if len(confirm) > 0 and confirm.lower()[:1] == 'y':
                 print("Programming SoC gateware {}".format(args.soc))
                 with open(args.soc, "rb") as f:
                     image = f.read()
-                    pc_usb.flash_program(LOC_SOC, image, verify=verify)
+                    if verify == True:
+                        print("Note: SoC verification is not possible as readback is locked for security purposes")
+                    pc_usb.flash_program(locs['LOC_SOC'][0], image, verify=False)
+                    print("Erasing PDDB root structures")
+                    pc_usb.erase_region(locs['LOC_PDDB'][0], 1024 * 1024)
+
 
     if args.audiotest != None:
         print("Loading audio test clip {}".format(args.audiotest))
         with open(args.audiotest, "rb") as f:
             image = f.read()
-            if len(image) >= LEN_AUDIO:
+            if len(image) >= locs['LEN_AUDIO'][0]:
                 print("audio file is too long, aborting audio burn!")
             else:
-                pc_usb.flash_program(LOC_AUDIO, image, verify=verify)
+                pc_usb.flash_program(locs['LOC_AUDIO'][0], image, verify=verify)
+
+    if args.factory_new:
+        base_url = "https://ci.betrusted.io/releases/v0.9.5/"
+        # erase the entire flash
+        pc_usb.erase_region(0, 0x800_0000)
+        # burn the gateware
+        for sections in locs.values():
+            if sections[1] != 'pass':
+                print('retrieving {}'.format(base_url + sections[1]))
+                with urllib.request.urlopen(base_url + sections[1]) as f:
+                    print('burning at {:x}'.format(sections[0]))
+                    image = f.read()
+                    pc_usb.flash_program(sections[0], image, verify=False)
+
 
     print("Resuming CPU.")
     pc_usb.poke(vexdbg_addr, 0x02000000)
