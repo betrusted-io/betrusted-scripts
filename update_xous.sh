@@ -24,6 +24,11 @@ do
 	    echo "$0 writes update binaries. --kernel-skip skips the kernel, --fpga-skip skips the FPGA, --loader-skip skips the loader."
 	    exit 0
 	    ;;
+	--key)
+	    shift
+	    KEY="--key $1"
+	    shift
+	    ;;
 	*)
 	    OTHER_ARGUMENTS+=("$1")
 	    shift
@@ -41,19 +46,19 @@ sudo ./vbus.sh 1
 sudo ./reset_soc.sh
 if [ $UPDATE_LOADER -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/loader.bin --raw-binary -a 0x500000 -s -r -n
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/loader.bin --raw-binary -a 0x500000 -s -r -n $KEY
     cd ..
 fi
 
 if [ $UPDATE_KERNEL -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/xous.img --raw-binary -a 0x980000 -s -r -n
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/xous.img --raw-binary -a 0x980000 -s -r -n $KEY
     cd ..
 fi
 
 if [ $UPDATE_FPGA -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --raw-binary -a 0x280000 --spi-mode -r -n
+    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --raw-binary -a 0x280000 --spi-mode -r -n $KEY
     cd ..
     echo "Gateware update staged. To apply, select 'Install gateware update' from the root menu of your device."
     echo "If you have not initialized root keys yet, use provision_xous.sh instead to directly overwrite the image. This deletes any keys and replaces them with defaults."
