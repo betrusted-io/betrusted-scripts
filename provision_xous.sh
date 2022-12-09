@@ -59,8 +59,15 @@ fi
 sudo ./reset_soc.sh
 if [ $UPDATE_FPGA -eq 1 ]
 then
-    cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --raw-binary --spi-mode -r $KEY
-    cd ..
+    if [ -z "$KEY" ]
+    then
+        cd jtag-tools && ./jtag_gpio.py -f ../../precursors/soc_csr.bin --raw-binary --spi-mode -r $KEY
+        cd ..
+    else
+	./jtag-tools/encrypt-bitstream.py -i 0 -f ../precursors/soc_csr.bin -o soc_csr_enc.bin $KEY -d
+        cd jtag-tools && ./jtag_gpio.py -f ../soc_csr_enc.bin --raw-binary --spi-mode -r $KEY
+        cd ..
+    fi
 fi
 
 if [ $UPDATE_LOADER -eq 1 ]

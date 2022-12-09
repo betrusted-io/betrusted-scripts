@@ -80,6 +80,10 @@ is encrypted by default to the "dummy key", e.g. an AES key of all 0's.
 
 ## Fused-locked Devices
 
+Devices where the eFuse has been blown & secured will only accept SoC images that are
+encrypted to the device's key. As JTAG burning of the FLASH requires loading an intermediate
+bitstream, this intermediate bitstream must be encrypted to your device.
+
 If you have the backup key of a fuse-locked device, you can use the scripts here
 to unbrick a device. You can specify the backup key with the `--key` argument to
 either `update_xous.sh` or `provision_xous.sh` scripts.
