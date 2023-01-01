@@ -2,6 +2,11 @@
 
 Scripts to provision Precursor using a Raspberry Pi plus the Raspberry Pi debug hat.
 
+If you're just looking to update your device, perhaps this would be a
+better starting point:
+
+https://github.com/betrusted-io/betrusted-wiki/wiki/Updating-Your-Device
+
 ## Setup
 
 The core scripts most users will want to use are `update_xous.sh`, `config_up5k.sh`,
