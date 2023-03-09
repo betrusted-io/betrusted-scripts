@@ -2,6 +2,11 @@
 
 Scripts to provision Precursor using a Raspberry Pi plus the Raspberry Pi debug hat.
 
+If you're just looking to update your device, perhaps this would be a
+better starting point:
+
+https://github.com/betrusted-io/betrusted-wiki/wiki/Updating-Your-Device
+
 ## Setup
 
 The core scripts most users will want to use are `update_xous.sh`, `config_up5k.sh`,
@@ -77,6 +82,25 @@ Here is a description of the relevant commands, in the order that you would exec
 Note that an "encrypted" image is used for the FPGA by default; however,
 for FPGAs that have not been sealed by the end user, the encrypted image
 is encrypted by default to the "dummy key", e.g. an AES key of all 0's.
+
+## Fused-locked Devices
+
+Devices where the eFuse has been blown & secured will only accept SoC images that are
+encrypted to the device's key. As JTAG burning of the FLASH requires loading an intermediate
+bitstream, this intermediate bitstream must be encrypted to your device.
+
+If you have the backup key of a fuse-locked device, you can use the scripts here
+to unbrick a device. You can specify the backup key with the `--key` argument to
+either `update_xous.sh` or `provision_xous.sh` scripts.
+
+The script will always accept a key that is formatted as a hex string. If you have
+a recent enough version of Python that you can run `bip_utils` (`pip3 install bip_utils`),
+you can directly pass your BIP-39 key to the script by providing it as an escaped quoted
+string, e.g. `--key "\"canoe lift art ...\""`.
+
+However, Rasbpians version "Stretch" or older ship with a Python that is too old for
+`bip_utils`. In this case, you need to translate the BIP-39 phrase into the "entropy"
+as a hex string using another utility.
 
 ## Other scripts
 

@@ -540,6 +540,8 @@ def main():
 
     logging.debug("waiting for sentinel")
     try:
+        slow_send(console, '\r') # clear any dialog box, if present
+        time.sleep(1)
         slow_send(console, 'keys bbram\r') # send the command to initiate the provisioning
         console.expect_exact(CONSOLE_SENTINEL, 30)
     except Exception as e:
@@ -614,7 +616,7 @@ def main():
 
     reset_fpga()
     while len(jtag_legs):
-        # time.sleep(0.002) # give 2 ms between each command
+        time.sleep(0.002) # give 2 ms between each command
         jtag_next()
         
 #        while len(jtag_results):
@@ -625,11 +627,13 @@ def main():
     time.sleep(1.0)
     reset_fpga()
     time.sleep(1.0)
+    logging.debug('FPGA reset done, toggling power')
 
     GPIO.output(PWR_pin, 0)
     time.sleep(4.0)
     GPIO.output(PWR_pin, 1)
     time.sleep(1.0)
+    logging.debug('Power toggled, cleaning up GPIO')
     
     GPIO.cleanup()
 
