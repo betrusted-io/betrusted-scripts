@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 echo "WARNING: this script is for un-bricking devices, and will overwrite any secret keys stored in the gateware"
 
