@@ -552,7 +552,7 @@ def main():
 
     print("You may need to enter the update password on the Precursor device now; do not type the password here!")
     
-    console.expect_exact(CONSOLE_SENTINEL, 60)
+    console.expect_exact(CONSOLE_SENTINEL, 15*60)
     log = console.before.decode('utf-8')
     bbram_copies = []
     for line in log.split('\n'):
